@@ -1,5 +1,5 @@
-﻿using HeroicMud.GameLogic.PlayerRepository;
-using HeroicMud.GameLogic.Room;
+﻿using HeroicMud.GameLogic.Data.Rooms;
+using HeroicMud.GameLogic.PlayerRepository;
 using HeroicMud.GameLogic.TickLogic;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
@@ -8,21 +8,21 @@ namespace HeroicMud.GameLogic;
 
 public static class GameLogicServiceCollectionExtensions
 {
-	public static IServiceCollection AddGameLogic(this IServiceCollection services)
-	{
-		services.AddSingleton<MudGame>();
-		services.AddSingleton<IPlayerRepository, PGPlayerRepository>();
-		services.AddSingleton<IDbConnection>(sp =>
-		{
-			var conn = new Npgsql.NpgsqlConnection(
-				Environment.GetEnvironmentVariable("MUD_DB_CONNECTION")
-				?? throw new InvalidOperationException("MUD_DB_CONNECTION not set"));
-			conn.Open();
-			return conn;
-		});
-		services.AddSingleton<TickManager>();
-		services.AddSingleton<RoomManager>();
+    public static IServiceCollection AddGameLogic(this IServiceCollection services)
+    {
+        services.AddSingleton<MudGame>();
+        services.AddSingleton<IPlayerRepository, PGPlayerRepository>();
+        services.AddSingleton<IDbConnection>(_ =>
+        {
+            var conn = new Npgsql.NpgsqlConnection(
+                Environment.GetEnvironmentVariable("MUD_DB_CONNECTION")
+                ?? throw new InvalidOperationException("MUD_DB_CONNECTION not set"));
+            conn.Open();
+            return conn;
+        });
+        services.AddSingleton<TickManager>();
+        services.AddSingleton<RoomManager>();
 
-		return services;
-	}
+        return services;
+    }
 }
