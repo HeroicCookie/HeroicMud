@@ -14,6 +14,14 @@ public interface IPlayerRepository
 	Task<Player?> GetAsync(string discordId);
 
 	/// <summary>
+	/// Gets all players from the database.
+	/// </summary>
+	/// <returns>
+	/// A list of all players.
+	/// </returns>
+	Task<List<Player>> GetAllAsync();
+
+	/// <summary>
 	/// Creates a player in the database.
 	/// </summary>
 	/// <param name="player"></param>

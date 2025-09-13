@@ -2,10 +2,6 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using HeroicMud.GameLogic;
-using HeroicMud.GameLogic.PlayerRepository;
-using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
-using System.Data;
 
 namespace HeroicMud.Discord;
 
@@ -44,7 +40,5 @@ public class DiscordBot
 
 		await _client.LoginAsync(TokenType.Bot, token);
 		await _client.StartAsync();
-
-		await Task.Delay(-1);
 	}
 }

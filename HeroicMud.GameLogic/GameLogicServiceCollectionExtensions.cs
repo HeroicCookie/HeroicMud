@@ -1,4 +1,6 @@
 ﻿using HeroicMud.GameLogic.PlayerRepository;
+using HeroicMud.GameLogic.Room;
+using HeroicMud.GameLogic.TickLogic;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
 
@@ -18,6 +20,8 @@ public static class GameLogicServiceCollectionExtensions
 			conn.Open();
 			return conn;
 		});
+		services.AddSingleton<TickManager>();
+		services.AddSingleton<RoomManager>();
 
 		return services;
 	}

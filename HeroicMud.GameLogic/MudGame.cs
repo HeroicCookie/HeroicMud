@@ -1,33 +1,48 @@
-﻿using HeroicMud.GameLogic.Enums;
+﻿using HeroicMud.GameLogic.Data.Rooms;
+using HeroicMud.GameLogic.Enums;
 using HeroicMud.GameLogic.PlayerRepository;
-using System.Threading.Tasks;
+using HeroicMud.GameLogic.Room;
+using HeroicMud.GameLogic.TickLogic;
 
 namespace HeroicMud.GameLogic;
 
 public class MudGame
 {
 	private readonly IPlayerRepository _playerRepository;
+	private readonly TickManager _tickManager;
+	private readonly RoomManager _roomManager;
+	private List<Player> players = new();
 
-	public MudGame(IPlayerRepository playerRepository)
+	public MudGame(IPlayerRepository playerRepository, TickManager tickManager, RoomManager roomManager)
 	{
 		_playerRepository = playerRepository;
+		_tickManager = tickManager;
+		_roomManager = roomManager;
 	}
 
-	public async Task<SaveResult> CreatePlayerAsync(string discordId, string name, char gender)
+	public async Task LoadPlayersAsync()
+	{
+		players = await _playerRepository.GetAllAsync();
+		foreach (var player in players)
+		{
+			_tickManager.Register(player);
+		}
+	}
+
+	public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, char gender)
 	{
 		Player player = new()
 		{
 			DiscordId = discordId,
+			ChannelId = channelId,
 			Name = name,
-			Gender = 'm'
+			Gender = 'm',
+			CurrentRoomId = "windstop_inn_common_room"
 		};
 
+		players.Add(player);
+		_tickManager.Register(player);
 		return await _playerRepository.CreateAsync(player);
-	}
-
-	public async Task<Player?> GetPlayerAsync(string discordId)
-	{
-		return await _playerRepository.GetAsync(discordId);
 	}
 
 	public async Task<SaveResult> SavePlayerAsync(Player player)
@@ -35,9 +50,9 @@ public class MudGame
 		return await _playerRepository.UpdateAsync(player);
 	}
 
-	public async Task<string> HandlePlayerCommand(string discordId, GameCommand command, params string[] args)
+	public string HandlePlayerCommand(string discordId, GameCommand command, params string[] args)
 	{
-		Player? player = await GetPlayerAsync(discordId);
+		Player? player = players.FirstOrDefault(p => p.DiscordId == discordId);
 
 		if (player == null)
 		{
@@ -47,7 +62,7 @@ public class MudGame
 		return command switch
 		{
 			GameCommand.Look => HandleLook(player),
-			GameCommand.Go => HandleGo(player, args.FirstOrDefault() ?? ""),
+			GameCommand.Go => HandleGo(player, args.FirstOrDefault() ?? "").Result,
 			GameCommand.Say => HandleSay(player, string.Join(" ", args)),
 			_ => "Unknown command."
 		};
@@ -55,35 +70,36 @@ public class MudGame
 
 	private string HandleLook(Player player)
 	{
-		var room = player.CurrentRoom;
-		if (room is null)
+		IRoom? currentRoom = _roomManager.GetRoom(player.CurrentRoomId);
+		if (currentRoom is null)
 		{
 			return "You are nowhere. This is a bug.";
 		}
-			
-		var exits = room.Exits.Keys.Any() ? string.Join(", ", room.Exits.Keys) : "none";
-		return $"{room.Name}\n{room.Description}\nExits: {exits}";
+
+		return currentRoom.RenderDescription(player);
 	}
 
-	private string HandleGo(Player player, string direction)
+	private async Task<string> HandleGo(Player player, string direction)
 	{
+		IRoom? currentRoom = _roomManager.GetRoom(player.CurrentRoomId);
 		if (string.IsNullOrWhiteSpace(direction))
 			return "Go where?";
 
-		if (player.CurrentRoom is null)
+		if (currentRoom is null)
 		{
 			return "You are nowhere. This is a bug.";
 		}
 
-		if (player.CurrentRoom.Exits.TryGetValue(direction.ToLowerInvariant(), out var nextRoom))
+		if (currentRoom.Exits.TryGetValue(direction.ToLower(), out string? nextRoomId))
 		{
-			player.CurrentRoom = nextRoom;
-			return HandleLook(player);
+			player.CurrentRoomId = nextRoomId;
+			_ = await SavePlayerAsync(player); // TODO: Add some user feedback if this fails
+
+			currentRoom = _roomManager.GetRoom(player.CurrentRoomId);
+			return currentRoom.RenderDescription(player);
 		}
-		else
-		{
-			return "You can't go that way.";
-		}
+
+		return "You can't go that way.";
 	}
 
 	private string HandleSay(Player player, string message)
@@ -93,5 +109,15 @@ public class MudGame
 
 		return $"{player.Name} says: {message}";
 	}
+
+	public Player? GetPlayer(string discordId)
+	{
+		Player? player = players.FirstOrDefault(p => p.DiscordId == discordId);
+		return player;
+	}
+
+	public bool PlayerExists(string discordId) => GetPlayer(discordId) != null;
+
+	public IEnumerable<Player> GetPlayersInRoom(string roomId) => players.Where(p => p.CurrentRoomId == roomId);
 }
 

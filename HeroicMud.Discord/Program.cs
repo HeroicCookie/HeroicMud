@@ -1,5 +1,6 @@
 ﻿using HeroicMud.Discord;
 using HeroicMud.GameLogic;
+using HeroicMud.GameLogic.TickLogic;
 using Microsoft.Extensions.DependencyInjection;
 
 class Program
@@ -14,9 +15,14 @@ class Program
 		var provider = services.BuildServiceProvider();
 
 		provider.GetRequiredService<LoggingService>();
-		var bot = provider.GetRequiredService<DiscordBot>();
 
-		await bot.StartAsync();
+		var bot = provider.GetRequiredService<DiscordBot>();
+		var tickManager = provider.GetRequiredService<TickManager>();
+		var game = provider.GetRequiredService<MudGame>();
+
+		_ = bot.StartAsync();
+		_ = game.LoadPlayersAsync();
+		_ = tickManager.StartAsync();
 
 		await Task.Delay(-1);
 	}

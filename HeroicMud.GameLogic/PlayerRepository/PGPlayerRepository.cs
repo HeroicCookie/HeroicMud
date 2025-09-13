@@ -20,13 +20,27 @@ public class PGPlayerRepository : IPlayerRepository
 			new { discordId });
 	}
 
+	public async Task<List<Player>> GetAllAsync()
+	{
+		var players = await _connection.QueryAsync<Player>(@"
+		SELECT 
+			discord_id AS DiscordId, 
+			channel_id AS ChannelId, 
+			name, 
+			gender, 
+			current_room_id AS CurrentRoomId 
+		FROM player"
+		);
+		return players.ToList();
+	}
+
 	public async Task<SaveResult> CreateAsync(Player player)
 	{
 		try
 		{
 			var affected = await _connection.ExecuteAsync(
-				@"INSERT INTO player (discord_id, name, gender)
-              VALUES (@DiscordId, @Name, @Gender)
+				@"INSERT INTO player (discord_id, channel_id, name, gender, current_room_id)
+              VALUES (@DiscordId, @ChannelId, @Name, @Gender, @CurrentRoomId)
               ON CONFLICT (discord_id) DO NOTHING",
 				player);
 
@@ -48,7 +62,7 @@ public class PGPlayerRepository : IPlayerRepository
 		{
 			await _connection.ExecuteAsync(
 				@"UPDATE player
-				SET name = @Name
+				SET name = @Name, current_room_id = @CurrentRoomId
 				WHERE discord_id = @DiscordId",
 				player);
 			return SaveResult.Updated;
