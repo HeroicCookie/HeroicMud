@@ -10,7 +10,7 @@ namespace HeroicMud.Discord.AutoCompleteProviders
         public override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
         {
             Player player = game.GetPlayer(context.User.Id.ToString())!;
-            IRoom? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
+            Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
 
             List<string> exits = currentRoom?.Exits.Keys.ToList() ?? [];
 

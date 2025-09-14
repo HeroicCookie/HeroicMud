@@ -1,17 +1,17 @@
 ﻿namespace HeroicMud.GameLogic.Data.Rooms;
 
-public class WindstopInnCellar : IRoom
+public class WindstopInnCellar : Room
 {
-    public static WindstopInnCellar Instance = new();
+    public WindstopInnCellar() : base(
+        id: "windstop_inn_cellar",
+        exits: new()
+        {
+            ["ladder"] = "windstop_inn_common_room"
+        }
+    )
+    { }
 
-    public string Id => "windstop_inn_cellar";
-
-    public Dictionary<string, string> Exits => new()
-    {
-        { "ladder", "windstop_inn_common_room" }
-    };
-
-    public string RenderDescription(Player player)
+    public override string RenderDescription(Player player)
     {
         return """
 			The cellar of the Windstop Inn.

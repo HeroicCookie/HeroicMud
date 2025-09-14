@@ -1,6 +1,6 @@
 ﻿namespace HeroicMud.GameLogic.TickLogic;
 
-public interface ITickable
+public abstract class ITickable
 {
-	void OnTick();
+	public abstract void OnTick();
 }

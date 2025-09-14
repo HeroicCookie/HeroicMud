@@ -59,7 +59,7 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
 
     private string HandleLook(Player player)
     {
-        IRoom? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
+        Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
         if (currentRoom is null)
         {
             return "You are nowhere. This is a bug.";
@@ -70,7 +70,7 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
 
     private async Task<string> HandleGo(Player player, string direction)
     {
-        IRoom? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
+        Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
         if (string.IsNullOrWhiteSpace(direction))
             return "Go where?";
 

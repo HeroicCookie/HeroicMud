@@ -1,6 +1,6 @@
-﻿using Dapper;
+﻿using System.Data;
+using Dapper;
 using HeroicMud.GameLogic.Enums;
-using System.Data;
 
 namespace HeroicMud.GameLogic.PlayerRepository;
 
@@ -13,28 +13,28 @@ public class PGPlayerRepository : IPlayerRepository
 		_connection = connection;
 	}
 
-	public async Task<Player?> GetAsync(string discordId)
+	public override async Task<Player?> GetAsync(string discordId)
 	{
 		return await _connection.QuerySingleOrDefaultAsync<Player>(
 			"SELECT * FROM player WHERE discord_id = @discordId",
 			new { discordId });
 	}
 
-	public async Task<List<Player>> GetAllAsync()
+	public override async Task<List<Player>> GetAllAsync()
 	{
 		var players = await _connection.QueryAsync<Player>(@"
-		SELECT 
-			discord_id AS DiscordId, 
-			channel_id AS ChannelId, 
-			name, 
-			gender, 
-			current_room_id AS CurrentRoomId 
+		SELECT
+			discord_id AS DiscordId,
+			channel_id AS ChannelId,
+			name,
+			gender,
+			current_room_id AS CurrentRoomId
 		FROM player"
 		);
 		return players.ToList();
 	}
 
-	public async Task<SaveResult> CreateAsync(Player player)
+	public override async Task<SaveResult> CreateAsync(Player player)
 	{
 		try
 		{
@@ -56,7 +56,7 @@ public class PGPlayerRepository : IPlayerRepository
 		}
 	}
 
-	public async Task<SaveResult> UpdateAsync(Player player)
+	public override async Task<SaveResult> UpdateAsync(Player player)
 	{
 		try
 		{

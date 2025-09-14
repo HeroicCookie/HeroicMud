@@ -1,6 +1,7 @@
 ﻿using HeroicMud.GameLogic.TickLogic;
 
 namespace HeroicMud.GameLogic;
+
 public class Player : ITickable
 {
     public required string DiscordId { get; set; } = string.Empty;
@@ -11,7 +12,7 @@ public class Player : ITickable
 
     public int AttackCooldown { get; private set; } = 0;
 
-    public void OnTick()
+    public override void OnTick()
     {
         if (AttackCooldown > 0)
         {
