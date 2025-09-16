@@ -9,7 +9,7 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
 {
     private List<Player> players = [];
 
-    public async Task LoadPlayersAsync()
+	public async Task LoadPlayersAsync()
     {
         players = await playerRepository.GetAllAsync();
         foreach (var player in players)
