@@ -12,7 +12,7 @@ public class RoomManager
             .Where(t => t.Namespace == typeof(Room).Namespace)
             .Select(t =>
             {
-                if (typeof(Room).IsSubclassOf(t))
+                if (typeof(Room).IsSubclassOf(t) && t.GetConstructor([]) is not null)
                 {
                     object? room = Activator.CreateInstance(t);
                     if (room is not null)
