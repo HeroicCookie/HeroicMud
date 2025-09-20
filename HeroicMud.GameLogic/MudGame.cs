@@ -18,14 +18,15 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
         }
     }
 
-    public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, char gender)
+    public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, string description, char gender)
     {
         Player player = new()
         {
             DiscordId = discordId,
             ChannelId = channelId,
             Name = name,
-            Gender = 'm',
+            Description = description,
+			Gender = 'm',
             CurrentRoomId = "windstop_inn_common_room"
         };
 

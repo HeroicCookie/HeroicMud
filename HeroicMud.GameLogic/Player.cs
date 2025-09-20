@@ -8,7 +8,8 @@ public class Player : ITickable
     public required string ChannelId { get; set; } = string.Empty;
     public required string Name { get; set; } = string.Empty;
     public required char Gender { get; set; }
-    public string CurrentRoomId { get; set; } = string.Empty;
+    public required string Description { get; set; } = string.Empty;
+	public string CurrentRoomId { get; set; } = string.Empty;
 
     public int AttackCooldown { get; private set; } = 0;
 

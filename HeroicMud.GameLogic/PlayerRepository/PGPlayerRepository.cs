@@ -39,8 +39,8 @@ public class PGPlayerRepository : IPlayerRepository
 		try
 		{
 			var affected = await _connection.ExecuteAsync(
-				@"INSERT INTO player (discord_id, channel_id, name, gender, current_room_id)
-              VALUES (@DiscordId, @ChannelId, @Name, @Gender, @CurrentRoomId)
+				@"INSERT INTO player (discord_id, channel_id, name, description, gender, current_room_id)
+              VALUES (@DiscordId, @ChannelId, @Name, @Description, @Gender, @CurrentRoomId)
               ON CONFLICT (discord_id) DO NOTHING",
 				player);
 

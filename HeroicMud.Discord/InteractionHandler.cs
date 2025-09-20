@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using HeroicMud.Discord.AutoCompleteProviders;
+using HeroicMud.Discord.Components;
 using HeroicMud.GameLogic;
 using HeroicMud.GameLogic.Data.Rooms;
 using HeroicMud.GameLogic.Enums;
@@ -70,14 +71,8 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
 
 
     [SlashCommand("create", "Create a new character.")]
-    public async Task CreateAsync([Summary("name", "Name thyself.")] string name)
+    public async Task CreateAsync()
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            await RespondAsync("Name cannot be empty.", ephemeral: true);
-            return;
-        }
-
         bool playerExists = game.PlayerExists(Context.User.Id.ToString());
         if (playerExists == true)
         {
@@ -85,35 +80,45 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
         }
 
-        // Create a private text channel for the player
-        ITextChannel? channel = await CreatePrivateChannelAsync(Context, name);
-        if (channel == null)
-        {
-            await RespondAsync("Could not create your private channel.", ephemeral: true);
-            return;
-        }
-
-        SaveResult result = await game.CreatePlayerAsync(
-            Context.User.Id.ToString(),
-            channel.Id.ToString(),
-            name,
-            'm');
-
-        switch (result)
-        {
-            case SaveResult.Created:
-                await RespondAsync($"Character '{name}' created! Your private channel is <#{channel.Id}>.", ephemeral: true);
-                await channel.SendMessageAsync($"Welcome, {name}! This is your private channel. Use /look to see your surroundings.");
-                break;
-
-            case SaveResult.Error:
-            default:
-                await RespondAsync("Failed to create character. Try again later.", ephemeral: true);
-                break;
-        }
+		await Context.Interaction.RespondWithModalAsync<CharacterModal>("create_character_modal");
     }
 
-    private async Task<ITextChannel?> CreatePrivateChannelAsync(SocketInteractionContext context, string name)
+    // Character Modal Submission Handler
+    [ModalInteraction("create_character_modal", true)]
+    public async Task HandleCharacterModalAsync(CharacterModal modal)
+    {
+        string name = modal.Name.Trim();
+        string description = modal.Description.Trim();
+
+		ITextChannel? channel = await CreatePrivateChannelAsync(Context, name);
+		if (channel == null)
+		{
+			await RespondAsync("Could not create your private channel.", ephemeral: true);
+			return;
+		}
+
+		SaveResult result = await game.CreatePlayerAsync(
+			Context.User.Id.ToString(),
+			channel.Id.ToString(),
+			name,
+            description,
+			'm');
+
+		switch (result)
+		{
+			case SaveResult.Created:
+				await RespondAsync($"Character '{name}' created! Your private channel is <#{channel.Id}>.", ephemeral: true);
+				await channel.SendMessageAsync($"Welcome, {name}! This is your private channel. Use /look to see your surroundings.");
+				break;
+
+			case SaveResult.Error:
+			default:
+				await RespondAsync("Failed to create character. Try again later.", ephemeral: true);
+				break;
+		}
+	}
+
+	private async Task<ITextChannel?> CreatePrivateChannelAsync(SocketInteractionContext context, string name)
     {
         if (context.Channel is not SocketTextChannel parentChannel)
             return null;
