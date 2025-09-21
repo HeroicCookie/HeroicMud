@@ -54,23 +54,26 @@ public class DialogueNode(string option)
 
     public DialogueResponse Next(Player player, string? option)
     {
-        Selected(player);
-
         if (option is not null)
             foreach (DialogueNode node in Children)
                 if (node.Option == option)
                     return node.Next(player, null);
 
+        Selected(player);
+
         List<string> options = [];
         foreach (DialogueNode node in Children.Where(n => n.Condition(player) is true))
             options.Add(node.Option);
 
-        return new(this, options);
+        if (options.Count > 0)
+            return new(this, options);
+        else
+            return new(null, options);
     }
 }
 
-public struct DialogueResponse(DialogueNode node, List<string> options)
+public struct DialogueResponse(DialogueNode? node, List<string> options)
 {
-    public DialogueNode Node = node;
+    public DialogueNode? Node = node;
     public List<string> Options = options;
 }

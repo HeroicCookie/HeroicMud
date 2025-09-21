@@ -95,8 +95,8 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         var response = dialogue.Next(player, null);
         var components = BuildDialogueOptions(response.Options);
         player.CurrentDialogueNode = response.Node;
-		await RespondAsync(dialogue.Response(player)[0], components: components);
-	}
+        await RespondAsync(dialogue.Response(player)[0], components: components);
+    }
 
     [ComponentInteraction("*", true)]
     public async Task HandleDialogueOptionAsync(string customId)
@@ -106,32 +106,33 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
 
         var dialogue = player.CurrentDialogueNode;
         if (dialogue == null)
-		{
+        {
             await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
             return;
-		}
+        }
 
-		DialogueResponse response = dialogue.Next(player, customId);
+        DialogueResponse response = dialogue.Next(player, customId);
+        player.CurrentDialogueNode = response.Node;
 
         if (response.Options.Count == 0)
         {
-			await Context.Interaction.ModifyOriginalResponseAsync(msg =>
-			{
-				msg.Content = string.Join("\n", dialogue.Response(player));
-			});
-			return;
+            await Context.Interaction.ModifyOriginalResponseAsync(msg =>
+            {
+                msg.Content = string.Join("\n", dialogue.Response(player));
+            });
+            return;
         }
-        var components = BuildDialogueOptions(response.Options);
 
+        var components = BuildDialogueOptions(response.Options);
         await Context.Interaction.ModifyOriginalResponseAsync(msg =>
         {
             msg.Content = string.Join("\n", dialogue.Response(player));
             msg.Components = components;
         });
-	}
+    }
 
-	// Build interaction response for dialogue options
-	public MessageComponent BuildDialogueOptions(List<string> options)
+    // Build interaction response for dialogue options
+    public MessageComponent BuildDialogueOptions(List<string> options)
     {
         var builder = new ComponentBuilder();
         foreach (var option in options)
@@ -139,9 +140,9 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             builder.WithButton(option, option, ButtonStyle.Primary);
         }
         return builder.Build();
-	}
+    }
 
-	[SlashCommand("create", "Create a new character.")]
+    [SlashCommand("create", "Create a new character.")]
     public async Task CreateAsync()
     {
         bool playerExists = game.PlayerExists(Context.User.Id.ToString());
@@ -151,7 +152,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
         }
 
-		await Context.Interaction.RespondWithModalAsync<CharacterModal>("create_character_modal");
+        await Context.Interaction.RespondWithModalAsync<CharacterModal>("create_character_modal");
     }
 
     // Character Modal Submission Handler
@@ -161,35 +162,35 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         string name = modal.Name.Trim();
         string description = modal.Description.Trim();
 
-		ITextChannel? channel = await CreatePrivateChannelAsync(Context, name);
-		if (channel == null)
-		{
-			await RespondAsync("Could not create your private channel.", ephemeral: true);
-			return;
-		}
+        ITextChannel? channel = await CreatePrivateChannelAsync(Context, name);
+        if (channel == null)
+        {
+            await RespondAsync("Could not create your private channel.", ephemeral: true);
+            return;
+        }
 
-		SaveResult result = await game.CreatePlayerAsync(
-			Context.User.Id.ToString(),
-			channel.Id.ToString(),
-			name,
+        SaveResult result = await game.CreatePlayerAsync(
+            Context.User.Id.ToString(),
+            channel.Id.ToString(),
+            name,
             description,
-			'm');
+            'm');
 
-		switch (result)
-		{
-			case SaveResult.Created:
-				await RespondAsync($"Character '{name}' created! Your private channel is <#{channel.Id}>.", ephemeral: true);
-				await channel.SendMessageAsync($"Welcome, {name}! This is your private channel. Use /look to see your surroundings.");
-				break;
+        switch (result)
+        {
+            case SaveResult.Created:
+                await RespondAsync($"Character '{name}' created! Your private channel is <#{channel.Id}>.", ephemeral: true);
+                await channel.SendMessageAsync($"Welcome, {name}! This is your private channel. Use /look to see your surroundings.");
+                break;
 
-			case SaveResult.Error:
-			default:
-				await RespondAsync("Failed to create character. Try again later.", ephemeral: true);
-				break;
-		}
-	}
+            case SaveResult.Error:
+            default:
+                await RespondAsync("Failed to create character. Try again later.", ephemeral: true);
+                break;
+        }
+    }
 
-	private async Task<ITextChannel?> CreatePrivateChannelAsync(SocketInteractionContext context, string name)
+    private async Task<ITextChannel?> CreatePrivateChannelAsync(SocketInteractionContext context, string name)
     {
         if (context.Channel is not SocketTextChannel parentChannel)
             return null;
