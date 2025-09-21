@@ -5,13 +5,13 @@ public class DialogueNode(string option)
     public string Name { get => Option; }
     public string Option = option;
 
-    public Func<Player, string[]> Response = _ => [];
+    public Func<Player, List<string>> Response = _ => [];
     public Func<Player, bool> Condition = _ => true;
     public Action<Player> Selected = _ => { };
 
     public List<DialogueNode> Children = [];
 
-    public DialogueNode(string option, string[] response) : this(option)
+    public DialogueNode(string option, List<string> response) : this(option)
     {
         Response = _ => response;
     }
@@ -21,7 +21,7 @@ public class DialogueNode(string option)
         Condition = condition;
     }
 
-    public DialogueNode(string option, string[] response, Func<Player, bool> condition) : this(option)
+    public DialogueNode(string option, List<string> response, Func<Player, bool> condition) : this(option)
     {
         Response = _ => response;
         Condition = condition;
@@ -46,7 +46,7 @@ public class DialogueNode(string option)
         return this;
     }
 
-    public DialogueNode WithResponse(Func<Player, string[]> response)
+    public DialogueNode WithResponse(Func<Player, List<string>> response)
     {
         Response = response;
         return this;
@@ -65,15 +65,13 @@ public class DialogueNode(string option)
         foreach (DialogueNode node in Children.Where(n => n.Condition(player) is true))
             options.Add(node.Option);
 
-        if (options.Count > 0)
-            return new(this, options);
-        else
-            return new(null, options);
+        return new(options.Count > 0 ? this : null, Response(player), options);
     }
 }
 
-public struct DialogueResponse(DialogueNode? node, List<string> options)
+public struct DialogueResponse(DialogueNode? node, List<string> text, List<string> options)
 {
     public DialogueNode? Node = node;
+    public List<string> Text = text;
     public List<string> Options = options;
 }
