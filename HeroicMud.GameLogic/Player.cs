@@ -14,7 +14,7 @@ public class Player : ITickable
 
     public int AttackCooldown { get; private set; } = 0;
 
-    public DialogueNode? CurrentDialogueNode { get; set; } = null;
+    public DialogueResponse? CurrentDialogueResponse { get; set; } = null;
 
 	public override void OnTick()
     {

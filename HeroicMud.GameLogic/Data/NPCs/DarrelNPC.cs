@@ -6,7 +6,12 @@
 
 		static DarrelNPC()
 		{
-			Dialogue = new DialogueNode("Darrel", ["Hello, travelers!"])
+			Dialogue = new DialogueNode("Darrel", 
+				[
+					"Hello, traveler!", 
+					"Welcome to my tavern!", 
+					"Let me know if there is anything I can get you."
+				])
 				.WithOption(new("How are you?", ["I'm fine!"]))
 				.WithOption(new("I know your secret!", ["OH GOD NO."], _ => true))
 				.WithOption(

@@ -92,69 +92,86 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
         }
 
-        var response = dialogue.Next(player, null);
-        var components = BuildDialogueOptions(response.Options);
-        player.CurrentDialogueNode = response.Node;
-        await RespondAsync(dialogue.Response(player)[0], components: components);
-    }
+        player.CurrentDialogueResponse = dialogue.Next(player, null);
+		await ShowDialogueLineAsync(Context.Interaction, player);
+	}
 
-	[ComponentInteraction("*", true)]
+	private async Task ShowDialogueLineAsync(IDiscordInteraction interaction, Player player)
+	{
+        if (player.CurrentDialogueResponse == null)
+        {
+            await interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
+            return;
+		}
+
+		string line = player.CurrentDialogueResponse.Text[0];
+
+		var builder = new ComponentBuilder();
+
+		if (player.CurrentDialogueResponse.Text.Count > 1)
+		{
+			player.CurrentDialogueResponse.Text.RemoveAt(0);
+			builder.WithButton("Continue", "dialogue:continue", ButtonStyle.Primary);
+		}
+		else if (player.CurrentDialogueResponse.Options.Count > 0)
+		{
+			foreach (var option in player.CurrentDialogueResponse.Options)
+			{
+				builder.WithButton(option, "dialogue:" + option, ButtonStyle.Primary);
+			}
+		}
+        else
+        {
+            player.CurrentDialogueResponse = null;
+		}
+
+		var componentInteraction = interaction as SocketMessageComponent;
+		if (componentInteraction != null)
+		{
+			await componentInteraction.UpdateAsync(msg =>
+			{
+				msg.Content = line;
+				msg.Components = builder.Build();
+			});
+		}
+		else
+		{
+			await interaction.RespondAsync(line, components: builder.Build());
+		}
+	}
+
+
+	[ComponentInteraction("dialogue:*", true)]
 	public async Task HandleDialogueOptionAsync(string customId)
 	{
 		Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
 		if (player == null) return;
 
-		var dialogue = player.CurrentDialogueNode;
-		if (dialogue == null)
+		if (player.CurrentDialogueResponse == null)
 		{
 			await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
 			return;
 		}
 
-		DialogueResponse response = dialogue.Next(player, customId);
-		player.CurrentDialogueNode = response.Node;
-
-        if (player.CurrentDialogueNode == null)
+        if (customId != "continue")
         {
-            await Context.Interaction.RespondAsync("The conversation has ended.", ephemeral: true);
-            return;
+            if (!player.CurrentDialogueResponse.Options.Contains(customId))
+            {
+                await Context.Interaction.RespondAsync("Invalid dialogue option.", ephemeral: true);
+                return;
+			}
+
+            if (player.CurrentDialogueResponse.Node == null)
+            {
+                await Context.Interaction.RespondAsync("The conversation has ended.", ephemeral: true);
+                return;
+            }
+
+			player.CurrentDialogueResponse = player.CurrentDialogueResponse.Node.Next(player, customId);
 		}
 
-		var interaction = Context.Interaction as SocketMessageComponent;
-        if (interaction == null)
-        {
-            await Context.Interaction.RespondAsync("Interaction error.", ephemeral: true);
-            return;
-		}
-
-		if (response.Options.Count == 0)
-		{
-			await interaction.UpdateAsync(msg =>
-			{
-				msg.Content = player.CurrentDialogueNode.Response(player)[0];
-                msg.Components = null;
-			});
-			return;
-		}
-
-		var components = BuildDialogueOptions(response.Options);
-		await interaction.UpdateAsync(msg =>
-		{
-			msg.Content = player.CurrentDialogueNode.Response(player)[0];
-			msg.Components = components;
-		});
+		await ShowDialogueLineAsync(Context.Interaction, player);
 	}
-
-	// Build interaction response for dialogue options
-	public MessageComponent BuildDialogueOptions(List<string> options)
-    {
-        var builder = new ComponentBuilder();
-        foreach (var option in options)
-        {
-            builder.WithButton(option, option, ButtonStyle.Primary);
-        }
-        return builder.Build();
-    }
 
     [SlashCommand("create", "Create a new character.")]
     public async Task CreateAsync()

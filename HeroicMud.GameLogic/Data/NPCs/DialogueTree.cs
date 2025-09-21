@@ -69,7 +69,7 @@ public class DialogueNode(string option)
     }
 }
 
-public struct DialogueResponse(DialogueNode? node, List<string> text, List<string> options)
+public class DialogueResponse(DialogueNode? node, List<string> text, List<string> options)
 {
     public DialogueNode? Node = node;
     public List<string> Text = text;
