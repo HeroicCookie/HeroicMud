@@ -1,4 +1,6 @@
-﻿namespace HeroicMud.GameLogic.Data.Rooms;
+﻿using HeroicMud.GameLogic.Data.NPCs;
+
+namespace HeroicMud.GameLogic.Data.Rooms;
 
 public abstract class Room(string id, Dictionary<string, string> exits)
 {
@@ -10,5 +12,7 @@ public abstract class Room(string id, Dictionary<string, string> exits)
     /// </summary>
     public readonly Dictionary<string, string> Exits = exits;
 
-    public virtual string RenderDescription(Player player) => "Room has no description.";
+    public readonly List<DialogueNode> Dialogues = new();
+
+	public virtual string RenderDescription(Player player) => "Room has no description.";
 }

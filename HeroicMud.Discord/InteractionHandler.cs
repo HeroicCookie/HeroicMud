@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using HeroicMud.Discord.AutoCompleteProviders;
 using HeroicMud.Discord.Components;
 using HeroicMud.GameLogic;
+using HeroicMud.GameLogic.Data.NPCs;
 using HeroicMud.GameLogic.Data.Rooms;
 using HeroicMud.GameLogic.Enums;
 
@@ -69,8 +70,69 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         }
     }
 
+    [SlashCommand("talk", "Talk to an NPC in the room.")]
+    public async Task TalkAsync(
+        [Autocomplete(typeof(NPCAutoCompleteProvider))]
+        [Summary("npc", "The NPC to talk to.")] string npcName)
+    {
+        Player? player = await GetVerifiedPlayerAsync(Context);
+        if (player is null) return;
 
-    [SlashCommand("create", "Create a new character.")]
+        var room = roomManager.GetRoom(player.CurrentRoomId);
+        if (room == null)
+        {
+            await RespondAsync("You are in an unknown place…", ephemeral: true);
+            return;
+        }
+
+        DialogueNode? dialogue = room.Dialogues.FirstOrDefault(n => n.Name.Equals(npcName, StringComparison.OrdinalIgnoreCase));
+        if (dialogue == null)
+        {
+            await RespondAsync($"There is no '{npcName}' here to talk to.", ephemeral: true);
+            return;
+        }
+
+        var response = dialogue.Next(player, null);
+        var components = BuildDialogueOptions(response.Options);
+        await RespondAsync(dialogue.Response(player)[0], components: components);
+	}
+
+    [ComponentInteraction("*", true)]
+    public async Task HandleDialogueOptionAsync(string customId)
+    {
+        Player? player = await GetVerifiedPlayerAsync(Context);
+        if (player == null) return;
+
+        var dialogue = player.CurrentDialogueNode;
+        if (dialogue == null)
+		{
+            await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
+            return;
+		}
+
+		DialogueResponse response = dialogue.Next(player, customId);
+
+        if (response.Options.Count == 0)
+        {
+            await Context.Interaction.RespondAsync(string.Join("\n", dialogue.Response(player)));
+            return;
+        }
+        var components = BuildDialogueOptions(response.Options);
+        await Context.Interaction.RespondAsync(string.Join("\n", dialogue.Response(player)), components: components);
+	}
+
+	// Build interaction response for dialogue options
+	public MessageComponent BuildDialogueOptions(List<string> options)
+    {
+        var builder = new ComponentBuilder();
+        foreach (var option in options)
+        {
+            builder.WithButton(option, option, ButtonStyle.Primary);
+        }
+        return builder.Build();
+	}
+
+	[SlashCommand("create", "Create a new character.")]
     public async Task CreateAsync()
     {
         bool playerExists = game.PlayerExists(Context.User.Id.ToString());

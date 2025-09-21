@@ -1,4 +1,6 @@
-﻿namespace HeroicMud.GameLogic.Data.Rooms;
+﻿using HeroicMud.GameLogic.Data.NPCs;
+
+namespace HeroicMud.GameLogic.Data.Rooms;
 
 public class WindstopInnCommonRoom : Room
 {
@@ -9,11 +11,16 @@ public class WindstopInnCommonRoom : Room
             ["cellar door"] = "windstop_inn_cellar"
         }
     )
-    { }
+    {
+        Dialogues.Add(DarrelNPC.Dialogue);
+	}
 
     public override string RenderDescription(Player player)
     {
-        return @"The common room of the Windstop Inn.
-A **cellar door** leads below.";
+        return """
+            The common room of the Windstop Inn.
+            A **cellar door** leads below.
+            The tavern keeper, **Darrel**, is here, polishing a mug behind the bar.
+            """;
     }
 }

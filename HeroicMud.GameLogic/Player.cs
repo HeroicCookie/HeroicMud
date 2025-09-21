@@ -1,4 +1,5 @@
-﻿using HeroicMud.GameLogic.TickLogic;
+﻿using HeroicMud.GameLogic.Data.NPCs;
+using HeroicMud.GameLogic.TickLogic;
 
 namespace HeroicMud.GameLogic;
 
@@ -13,7 +14,9 @@ public class Player : ITickable
 
     public int AttackCooldown { get; private set; } = 0;
 
-    public override void OnTick()
+    public DialogueNode? CurrentDialogueNode { get; set; } = null;
+
+	public override void OnTick()
     {
         if (AttackCooldown > 0)
         {
