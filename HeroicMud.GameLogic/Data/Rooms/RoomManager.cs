@@ -8,23 +8,13 @@ public class RoomManager
 
     public RoomManager()
     {
-        _rooms = [.. Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => t.Namespace == typeof(Room).Namespace)
-            .Select(t =>
-            {
-                if (typeof(Room).IsSubclassOf(t) && t.GetConstructor([]) is not null)
-                {
-                    object? room = Activator.CreateInstance(t);
-                    if (room is not null)
-                        return (Room)room;
-                    return null;
-                }
-                return null;
-            })
-            .OfType<Room>()
-        ];
-        Console.WriteLine(String.Join(' ', _rooms.Select(r => r.Id)));
-    }
+		_rooms = [.. Assembly.GetExecutingAssembly().GetTypes()
+	    .Where(t => t.Namespace == typeof(Room).Namespace)
+	    .Where(t => t.IsSubclassOf(typeof(Room)) && t.GetConstructor(Type.EmptyTypes) is not null)
+	    .Select(t => (Room)Activator.CreateInstance(t)!)
+    ];
+        Console.WriteLine($"Loaded {_rooms.Length} rooms.");
+	}
 
     public Room GetRoom(string roomId)
     {

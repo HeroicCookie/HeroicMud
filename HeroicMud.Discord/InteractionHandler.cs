@@ -94,7 +94,8 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
 
         var response = dialogue.Next(player, null);
         var components = BuildDialogueOptions(response.Options);
-        await RespondAsync(dialogue.Response(player)[0], components: components);
+        player.CurrentDialogueNode = response.Node;
+		await RespondAsync(dialogue.Response(player)[0], components: components);
 	}
 
     [ComponentInteraction("*", true)]
@@ -114,11 +115,19 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
 
         if (response.Options.Count == 0)
         {
-            await Context.Interaction.RespondAsync(string.Join("\n", dialogue.Response(player)));
-            return;
+			await Context.Interaction.ModifyOriginalResponseAsync(msg =>
+			{
+				msg.Content = string.Join("\n", dialogue.Response(player));
+			});
+			return;
         }
         var components = BuildDialogueOptions(response.Options);
-        await Context.Interaction.RespondAsync(string.Join("\n", dialogue.Response(player)), components: components);
+
+        await Context.Interaction.ModifyOriginalResponseAsync(msg =>
+        {
+            msg.Content = string.Join("\n", dialogue.Response(player));
+            msg.Components = components;
+        });
 	}
 
 	// Build interaction response for dialogue options
