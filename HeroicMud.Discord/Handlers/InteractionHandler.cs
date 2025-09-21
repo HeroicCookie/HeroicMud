@@ -8,14 +8,14 @@ using HeroicMud.GameLogic.Data.NPCs;
 using HeroicMud.GameLogic.Data.Rooms;
 using HeroicMud.GameLogic.Enums;
 
-namespace HeroicMud.Discord;
+namespace HeroicMud.Discord.Handlers;
 
 public class InteractionHandler(MudGame game, RoomManager roomManager) : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("look", "Look around in the current room.")]
     public async Task LookAsync()
     {
-        Player? player = await GetVerifiedPlayerAsync(Context);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
         if (player == null) return;
 
         string discordId = Context.User.Id.ToString();
@@ -29,7 +29,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         [Autocomplete(typeof(DirectionAutoCompleteProvider))]
         [Summary("direction", "The direction to move.")] string direction)
     {
-        Player? player = await GetVerifiedPlayerAsync(Context);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
         if (player == null) return;
 
         string discordId = Context.User.Id.ToString();
@@ -41,7 +41,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
     [SlashCommand("say", "Say something to others in the room.")]
     public async Task SayAsync([Summary("message", "The message to say.")] string message)
     {
-        Player? player = await GetVerifiedPlayerAsync(Context);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
         if (player is null) return;
 
         var room = roomManager.GetRoom(player.CurrentRoomId);
@@ -75,7 +75,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         [Autocomplete(typeof(NPCAutoCompleteProvider))]
         [Summary("npc", "The NPC to talk to.")] string npcName)
     {
-        Player? player = await GetVerifiedPlayerAsync(Context);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
         if (player is null) return;
 
         var room = roomManager.GetRoom(player.CurrentRoomId);
@@ -98,41 +98,55 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         await RespondAsync(dialogue.Response(player)[0], components: components);
     }
 
-    [ComponentInteraction("*", true)]
-    public async Task HandleDialogueOptionAsync(string customId)
-    {
-        Player? player = await GetVerifiedPlayerAsync(Context);
-        if (player == null) return;
+	[ComponentInteraction("*", true)]
+	public async Task HandleDialogueOptionAsync(string customId)
+	{
+		Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
+		if (player == null) return;
 
-        var dialogue = player.CurrentDialogueNode;
-        if (dialogue == null)
+		var dialogue = player.CurrentDialogueNode;
+		if (dialogue == null)
+		{
+			await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
+			return;
+		}
+
+		DialogueResponse response = dialogue.Next(player, customId);
+		player.CurrentDialogueNode = response.Node;
+
+        if (player.CurrentDialogueNode == null)
         {
-            await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
+            await Context.Interaction.RespondAsync("The conversation has ended.", ephemeral: true);
             return;
-        }
+		}
 
-        DialogueResponse response = dialogue.Next(player, customId);
-        player.CurrentDialogueNode = response.Node;
-
-        if (response.Options.Count == 0)
+		var interaction = Context.Interaction as SocketMessageComponent;
+        if (interaction == null)
         {
-            await Context.Interaction.ModifyOriginalResponseAsync(msg =>
-            {
-                msg.Content = string.Join("\n", dialogue.Response(player));
-            });
+            await Context.Interaction.RespondAsync("Interaction error.", ephemeral: true);
             return;
-        }
+		}
 
-        var components = BuildDialogueOptions(response.Options);
-        await Context.Interaction.ModifyOriginalResponseAsync(msg =>
-        {
-            msg.Content = string.Join("\n", dialogue.Response(player));
-            msg.Components = components;
-        });
-    }
+		if (response.Options.Count == 0)
+		{
+			await interaction.UpdateAsync(msg =>
+			{
+				msg.Content = player.CurrentDialogueNode.Response(player)[0];
+                msg.Components = null;
+			});
+			return;
+		}
 
-    // Build interaction response for dialogue options
-    public MessageComponent BuildDialogueOptions(List<string> options)
+		var components = BuildDialogueOptions(response.Options);
+		await interaction.UpdateAsync(msg =>
+		{
+			msg.Content = player.CurrentDialogueNode.Response(player)[0];
+			msg.Components = components;
+		});
+	}
+
+	// Build interaction response for dialogue options
+	public MessageComponent BuildDialogueOptions(List<string> options)
     {
         var builder = new ComponentBuilder();
         foreach (var option in options)
@@ -162,7 +176,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         string name = modal.Name.Trim();
         string description = modal.Description.Trim();
 
-        ITextChannel? channel = await CreatePrivateChannelAsync(Context, name);
+        ITextChannel? channel = await DiscordHelpers.CreatePrivateChannelAsync(Context, name);
         if (channel == null)
         {
             await RespondAsync("Could not create your private channel.", ephemeral: true);
@@ -188,55 +202,5 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
                 await RespondAsync("Failed to create character. Try again later.", ephemeral: true);
                 break;
         }
-    }
-
-    private async Task<ITextChannel?> CreatePrivateChannelAsync(SocketInteractionContext context, string name)
-    {
-        if (context.Channel is not SocketTextChannel parentChannel)
-            return null;
-
-        var guild = parentChannel.Guild;
-        var categoryId = parentChannel.CategoryId;
-
-        var overwrites = new List<Overwrite>
-    {
-        new(guild.EveryoneRole.Id, PermissionTarget.Role,
-            new OverwritePermissions(viewChannel: PermValue.Deny)),
-
-        new(context.User.Id, PermissionTarget.User,
-            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-
-        new(guild.CurrentUser.Id, PermissionTarget.User,
-            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
-    };
-
-        return await guild.CreateTextChannelAsync(name, props =>
-        {
-            props.CategoryId = categoryId;
-            props.PermissionOverwrites = overwrites;
-        });
-    }
-
-    private async Task<Player?> GetVerifiedPlayerAsync(IInteractionContext context)
-    {
-        var player = game.GetPlayer(context.User.Id.ToString());
-
-        if (player == null)
-        {
-            await context.Interaction.RespondAsync(
-                "You don’t have a character yet. Use `/create` first.",
-                ephemeral: true);
-            return null;
-        }
-
-        if (player.ChannelId != context.Channel.Id.ToString())
-        {
-            await context.Interaction.RespondAsync(
-                "You can only use commands in your private channel.",
-                ephemeral: true);
-            return null;
-        }
-
-        return player;
     }
 }
