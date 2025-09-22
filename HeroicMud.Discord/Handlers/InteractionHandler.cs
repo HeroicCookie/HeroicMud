@@ -85,8 +85,9 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
         }
 
-        DialogueNode? dialogue = room.Dialogues.FirstOrDefault(n => n.Name.Equals(npcName, StringComparison.OrdinalIgnoreCase));
-        if (dialogue == null)
+        NPC? npc = room.GetNPCs(player).FirstOrDefault(n => n.Name.Equals(npcName, StringComparison.OrdinalIgnoreCase));
+		DialogueNode? dialogue = npc?.DialogueNode;
+		if (dialogue == null)
         {
             await RespondAsync($"There is no '{npcName}' here to talk to.", ephemeral: true);
             return;
@@ -104,7 +105,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
 		}
 
-		string line = player.CurrentDialogueResponse.Text[0];
+		string line = $"{player.CurrentDialogueResponse.Text[0]}";
 
 		var builder = new ComponentBuilder();
 

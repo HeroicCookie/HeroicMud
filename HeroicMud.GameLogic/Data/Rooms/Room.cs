@@ -12,7 +12,21 @@ public abstract class Room(string id, Dictionary<string, string> exits)
     /// </summary>
     public readonly Dictionary<string, string> Exits = exits;
 
-    public readonly List<DialogueNode> Dialogues = new();
+    public readonly List<NPC> NPCs = new();
 
 	public virtual string RenderDescription(Player player) => "Room has no description.";
+
+    /// <summary>
+    /// Override to provide a custom list of exits based on player information.
+    /// </summary>
+    /// <param name="player"></param>
+    /// <returns></returns>
+    public virtual Dictionary<string, string> GetExits(Player player) => Exits;
+
+	/// <summary>
+	/// Override to provide a custom list of NPCs based on player information.
+	/// </summary>
+	/// <param name="player"></param>
+	/// <returns></returns>
+	public virtual List<NPC> GetNPCs(Player player) => NPCs;
 }

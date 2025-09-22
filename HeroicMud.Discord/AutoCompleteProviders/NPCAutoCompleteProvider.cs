@@ -12,7 +12,7 @@ namespace HeroicMud.Discord.AutoCompleteProviders
 			Player player = game.GetPlayer(context.User.Id.ToString())!;
 			Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
 
-			List<string> npcs = currentRoom?.Dialogues.Select(n => n.Name).ToList() ?? [];
+			List<string> npcs = currentRoom?.GetNPCs(player).Select(n => n.Name).ToList() ?? [];
 
 			string currentInput = autocompleteInteraction.Data.Current.Value?.ToString() ?? "";
 

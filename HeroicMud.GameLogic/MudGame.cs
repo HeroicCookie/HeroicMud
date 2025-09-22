@@ -80,7 +80,7 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
             return "You are nowhere. This is a bug.";
         }
 
-        if (currentRoom.Exits.TryGetValue(direction.ToLower(), out string? nextRoomId))
+        if (currentRoom.GetExits(player).TryGetValue(direction.ToLower(), out string? nextRoomId))
         {
             player.CurrentRoomId = nextRoomId;
             _ = await SavePlayerAsync(player); // TODO: Add some user feedback if this fails

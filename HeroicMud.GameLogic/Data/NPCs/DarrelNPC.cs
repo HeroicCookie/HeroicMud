@@ -1,15 +1,23 @@
 ﻿namespace HeroicMud.GameLogic.Data.NPCs
 {
-	public class DarrelNPC
+	public sealed class DarrelNPC : NPC
 	{
-		public static DialogueNode Dialogue;
+		private static readonly DialogueNode _dialogue;
+		public override DialogueNode DialogueNode { get; } = _dialogue;
+
+		public DarrelNPC() : base("darrel", "Darrel") {}
+
+		public override string GetDescription(Player player)
+		{
+			return "Darrel is the tavern keeper of the Windstop Inn. He looks friendly enough.";
+		}
 
 		static DarrelNPC()
 		{
-			Dialogue = new DialogueNode("Darrel", 
+			_dialogue = new DialogueNode("Darrel",
 				[
-					"Hello, traveler!", 
-					"Welcome to my tavern!", 
+					"Hello, traveler!",
+					"Welcome to my tavern!",
 					"Let me know if there is anything I can get you."
 				])
 				.WithOption(new("How are you?", ["I'm fine!"]))

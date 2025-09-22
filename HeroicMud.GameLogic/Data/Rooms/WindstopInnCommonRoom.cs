@@ -12,7 +12,7 @@ public class WindstopInnCommonRoom : Room
         }
     )
     {
-        Dialogues.Add(DarrelNPC.Dialogue);
+        NPCs.Add(new DarrelNPC());
 	}
 
     public override string RenderDescription(Player player)
