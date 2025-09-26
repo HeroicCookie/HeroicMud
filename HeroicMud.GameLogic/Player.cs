@@ -1,4 +1,4 @@
-﻿using HeroicMud.GameLogic.Data.NPCs;
+﻿using HeroicMud.GameLogic.Content.NPCs;
 using HeroicMud.GameLogic.TickLogic;
 
 namespace HeroicMud.GameLogic;
@@ -8,15 +8,14 @@ public class Player : ITickable
     public required string DiscordId { get; set; } = string.Empty;
     public required string ChannelId { get; set; } = string.Empty;
     public required string Name { get; set; } = string.Empty;
-    public required char Gender { get; set; }
     public required string Description { get; set; } = string.Empty;
-	public string CurrentRoomId { get; set; } = string.Empty;
+
+    public string CurrentRoomId { get; set; } = string.Empty;
+    public DialogueResponse? CurrentDialogueResponse { get; set; } = null;
 
     public int AttackCooldown { get; private set; } = 0;
 
-    public DialogueResponse? CurrentDialogueResponse { get; set; } = null;
-
-	public override void OnTick()
+    public override void OnTick()
     {
         if (AttackCooldown > 0)
         {

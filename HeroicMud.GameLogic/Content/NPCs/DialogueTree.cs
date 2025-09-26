@@ -1,4 +1,4 @@
-namespace HeroicMud.GameLogic.Data.NPCs;
+namespace HeroicMud.GameLogic.Content.NPCs;
 
 public class DialogueNode(string option)
 {

@@ -1,24 +1,31 @@
-﻿using HeroicMud.GameLogic.Data.Rooms;
-using HeroicMud.GameLogic.Enums;
+﻿using HeroicMud.GameLogic.Content.Rooms;
 using HeroicMud.GameLogic.PlayerRepository;
 using HeroicMud.GameLogic.TickLogic;
 
 namespace HeroicMud.GameLogic;
 
-public class MudGame(IPlayerRepository playerRepository, TickManager tickManager, RoomManager roomManager)
+public class MudGame(IPlayerRepository playerRepository)
 {
-    private List<Player> players = [];
+    public readonly IPlayerRepository PlayerRepository = playerRepository;
+    public readonly RoomManager RoomManager = new();
 
-	public async Task LoadPlayersAsync()
+    private readonly TickManager _tickManager = new();
+    private List<Player> _players = [];
+
+    public async Task Start()
     {
-        players = await playerRepository.GetAllAsync();
-        foreach (var player in players)
-        {
-            tickManager.Register(player);
-        }
+        _players = await PlayerRepository.GetAllAsync();
+        foreach (var player in _players)
+            _tickManager.Register(player);
+        _tickManager.Start();
     }
 
-    public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, string description, char gender)
+    public async Task Stop()
+    {
+        await _tickManager.Stop();
+    }
+
+    public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, string description)
     {
         Player player = new()
         {
@@ -26,28 +33,22 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
             ChannelId = channelId,
             Name = name,
             Description = description,
-			Gender = 'm',
             CurrentRoomId = "windstop_inn_common_room"
         };
 
-        players.Add(player);
-        tickManager.Register(player);
-        return await playerRepository.CreateAsync(player);
+        _players.Add(player);
+        _tickManager.Register(player);
+
+        return await PlayerRepository.CreateAsync(player);
     }
 
-    public async Task<SaveResult> SavePlayerAsync(Player player)
-    {
-        return await playerRepository.UpdateAsync(player);
-    }
+    public async Task<SaveResult> SavePlayerAsync(Player player) => await PlayerRepository.UpdateAsync(player);
 
     public string HandlePlayerCommand(string discordId, GameCommand command, params string[] args)
     {
-        Player? player = players.FirstOrDefault(p => p.DiscordId == discordId);
-
-        if (player == null)
-        {
+        Player? player = _players.FirstOrDefault(p => p.DiscordId == discordId);
+        if (player is null)
             return "You need to create a character first using /create.";
-        }
 
         return command switch
         {
@@ -60,32 +61,28 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
 
     private string HandleLook(Player player)
     {
-        Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
+        Room? currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
         if (currentRoom is null)
-        {
             return "You are nowhere. This is a bug.";
-        }
 
         return currentRoom.RenderDescription(player);
     }
 
     private async Task<string> HandleGo(Player player, string direction)
     {
-        Room? currentRoom = roomManager.GetRoom(player.CurrentRoomId);
+        Room? currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
         if (string.IsNullOrWhiteSpace(direction))
             return "Go where?";
 
         if (currentRoom is null)
-        {
             return "You are nowhere. This is a bug.";
-        }
 
         if (currentRoom.GetExits(player).TryGetValue(direction.ToLower(), out string? nextRoomId))
         {
             player.CurrentRoomId = nextRoomId;
             _ = await SavePlayerAsync(player); // TODO: Add some user feedback if this fails
+            currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
 
-            currentRoom = roomManager.GetRoom(player.CurrentRoomId);
             return currentRoom.RenderDescription(player);
         }
 
@@ -100,13 +97,9 @@ public class MudGame(IPlayerRepository playerRepository, TickManager tickManager
         return $"{player.Name} says: {message}";
     }
 
-    public Player? GetPlayer(string discordId)
-    {
-        Player? player = players.FirstOrDefault(p => p.DiscordId == discordId);
-        return player;
-    }
+    public Player? GetPlayer(string discordId) => _players.FirstOrDefault(p => p.DiscordId == discordId);
 
     public bool PlayerExists(string discordId) => GetPlayer(discordId) != null;
 
-    public IEnumerable<Player> GetPlayersInRoom(string roomId) => players.Where(p => p.CurrentRoomId == roomId);
+    public IEnumerable<Player> GetPlayersInRoom(string roomId) => _players.Where(p => p.CurrentRoomId == roomId);
 }

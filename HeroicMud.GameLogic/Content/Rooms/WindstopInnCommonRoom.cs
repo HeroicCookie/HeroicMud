@@ -1,6 +1,6 @@
-﻿using HeroicMud.GameLogic.Data.NPCs;
+﻿using HeroicMud.GameLogic.Content.NPCs;
 
-namespace HeroicMud.GameLogic.Data.Rooms;
+namespace HeroicMud.GameLogic.Content.Rooms;
 
 public class WindstopInnCommonRoom : Room
 {
@@ -13,7 +13,7 @@ public class WindstopInnCommonRoom : Room
     )
     {
         NPCs.Add(new DarrelNPC());
-	}
+    }
 
     public override string RenderDescription(Player player)
     {

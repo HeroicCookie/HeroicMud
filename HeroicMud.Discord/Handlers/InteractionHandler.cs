@@ -4,23 +4,21 @@ using Discord.WebSocket;
 using HeroicMud.Discord.AutoCompleteProviders;
 using HeroicMud.Discord.Components;
 using HeroicMud.GameLogic;
-using HeroicMud.GameLogic.Data.NPCs;
-using HeroicMud.GameLogic.Data.Rooms;
-using HeroicMud.GameLogic.Enums;
+using HeroicMud.GameLogic.Content.NPCs;
 
 namespace HeroicMud.Discord.Handlers;
 
-public class InteractionHandler(MudGame game, RoomManager roomManager) : InteractionModuleBase<SocketInteractionContext>
+public class InteractionHandler(MudGame mudGame) : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("look", "Look around in the current room.")]
     public async Task LookAsync()
     {
-        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, mudGame);
         if (player == null) return;
 
         string discordId = Context.User.Id.ToString();
 
-        string output = game.HandlePlayerCommand(discordId, GameCommand.Look);
+        string output = mudGame.HandlePlayerCommand(discordId, GameCommand.Look);
         await RespondAsync(output);
     }
 
@@ -29,22 +27,22 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         [Autocomplete(typeof(DirectionAutoCompleteProvider))]
         [Summary("direction", "The direction to move.")] string direction)
     {
-        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, mudGame);
         if (player == null) return;
 
         string discordId = Context.User.Id.ToString();
 
-        string output = game.HandlePlayerCommand(discordId, GameCommand.Go, direction);
+        string output = mudGame.HandlePlayerCommand(discordId, GameCommand.Go, direction);
         await RespondAsync(output);
     }
 
     [SlashCommand("say", "Say something to others in the room.")]
     public async Task SayAsync([Summary("message", "The message to say.")] string message)
     {
-        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, mudGame);
         if (player is null) return;
 
-        var room = roomManager.GetRoom(player.CurrentRoomId);
+        var room = mudGame.RoomManager.GetRoom(player.CurrentRoomId);
         if (room == null)
         {
             await RespondAsync("You are in an unknown place…", ephemeral: true);
@@ -55,7 +53,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         await RespondAsync($"You say: {message}", ephemeral: true);
 
         // Get all other players in the room
-        var others = game.GetPlayersInRoom(room.Id)
+        var others = mudGame.GetPlayersInRoom(room.Id)
             .Where(p => p.DiscordId != player.DiscordId);
 
         foreach (var other in others)
@@ -75,10 +73,10 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         [Autocomplete(typeof(NPCAutoCompleteProvider))]
         [Summary("npc", "The NPC to talk to.")] string npcName)
     {
-        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, mudGame);
         if (player is null) return;
 
-        var room = roomManager.GetRoom(player.CurrentRoomId);
+        var room = mudGame.RoomManager.GetRoom(player.CurrentRoomId);
         if (room == null)
         {
             await RespondAsync("You are in an unknown place…", ephemeral: true);
@@ -86,73 +84,72 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
         }
 
         NPC? npc = room.GetNPCs(player).FirstOrDefault(n => n.Name.Equals(npcName, StringComparison.OrdinalIgnoreCase));
-		DialogueNode? dialogue = npc?.DialogueNode;
-		if (dialogue == null)
+        DialogueNode? dialogue = npc?.DialogueNode;
+        if (dialogue == null)
         {
             await RespondAsync($"There is no '{npcName}' here to talk to.", ephemeral: true);
             return;
         }
 
         player.CurrentDialogueResponse = dialogue.Next(player, null);
-		await ShowDialogueLineAsync(Context.Interaction, player);
-	}
+        await ShowDialogueLineAsync(Context.Interaction, player);
+    }
 
-	private async Task ShowDialogueLineAsync(IDiscordInteraction interaction, Player player)
-	{
+    private async Task ShowDialogueLineAsync(IDiscordInteraction interaction, Player player)
+    {
         if (player.CurrentDialogueResponse == null)
         {
             await interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
             return;
-		}
+        }
 
-		string line = $"{player.CurrentDialogueResponse.Text[0]}";
+        string line = $"{player.CurrentDialogueResponse.Text[0]}";
 
-		var builder = new ComponentBuilder();
+        var builder = new ComponentBuilder();
 
-		if (player.CurrentDialogueResponse.Text.Count > 1)
-		{
-			player.CurrentDialogueResponse.Text.RemoveAt(0);
-			builder.WithButton("Continue", "dialogue:continue", ButtonStyle.Primary);
-		}
-		else if (player.CurrentDialogueResponse.Options.Count > 0)
-		{
-			foreach (var option in player.CurrentDialogueResponse.Options)
-			{
-				builder.WithButton(option, "dialogue:" + option, ButtonStyle.Primary);
-			}
-		}
+        if (player.CurrentDialogueResponse.Text.Count > 1)
+        {
+            player.CurrentDialogueResponse.Text.RemoveAt(0);
+            builder.WithButton("Continue", "dialogue:continue", ButtonStyle.Primary);
+        }
+        else if (player.CurrentDialogueResponse.Options.Count > 0)
+        {
+            foreach (var option in player.CurrentDialogueResponse.Options)
+            {
+                builder.WithButton(option, "dialogue:" + option, ButtonStyle.Primary);
+            }
+        }
         else
         {
             player.CurrentDialogueResponse = null;
-		}
+        }
 
-		var componentInteraction = interaction as SocketMessageComponent;
-		if (componentInteraction != null)
-		{
-			await componentInteraction.UpdateAsync(msg =>
-			{
-				msg.Content = line;
-				msg.Components = builder.Build();
-			});
-		}
-		else
-		{
-			await interaction.RespondAsync(line, components: builder.Build());
-		}
-	}
+        if (interaction is SocketMessageComponent componentInteraction)
+        {
+            await componentInteraction.UpdateAsync(msg =>
+            {
+                msg.Content = line;
+                msg.Components = builder.Build();
+            });
+        }
+        else
+        {
+            await interaction.RespondAsync(line, components: builder.Build());
+        }
+    }
 
 
-	[ComponentInteraction("dialogue:*", true)]
-	public async Task HandleDialogueOptionAsync(string customId)
-	{
-		Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, game);
-		if (player == null) return;
+    [ComponentInteraction("dialogue:*", true)]
+    public async Task HandleDialogueOptionAsync(string customId)
+    {
+        Player? player = await DiscordHelpers.GetVerifiedPlayerAsync(Context, mudGame);
+        if (player == null) return;
 
-		if (player.CurrentDialogueResponse == null)
-		{
-			await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
-			return;
-		}
+        if (player.CurrentDialogueResponse == null)
+        {
+            await Context.Interaction.RespondAsync("You are not in a conversation.", ephemeral: true);
+            return;
+        }
 
         if (customId != "continue")
         {
@@ -160,7 +157,7 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             {
                 await Context.Interaction.RespondAsync("Invalid dialogue option.", ephemeral: true);
                 return;
-			}
+            }
 
             if (player.CurrentDialogueResponse.Node == null)
             {
@@ -168,16 +165,16 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
                 return;
             }
 
-			player.CurrentDialogueResponse = player.CurrentDialogueResponse.Node.Next(player, customId);
-		}
+            player.CurrentDialogueResponse = player.CurrentDialogueResponse.Node.Next(player, customId);
+        }
 
-		await ShowDialogueLineAsync(Context.Interaction, player);
-	}
+        await ShowDialogueLineAsync(Context.Interaction, player);
+    }
 
     [SlashCommand("create", "Create a new character.")]
     public async Task CreateAsync()
     {
-        bool playerExists = game.PlayerExists(Context.User.Id.ToString());
+        bool playerExists = mudGame.PlayerExists(Context.User.Id.ToString());
         if (playerExists == true)
         {
             await RespondAsync("You already have a character.", ephemeral: true);
@@ -201,12 +198,12 @@ public class InteractionHandler(MudGame game, RoomManager roomManager) : Interac
             return;
         }
 
-        SaveResult result = await game.CreatePlayerAsync(
+        SaveResult result = await mudGame.CreatePlayerAsync(
             Context.User.Id.ToString(),
             channel.Id.ToString(),
             name,
-            description,
-            'm');
+            description
+        );
 
         switch (result)
         {

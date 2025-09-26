@@ -1,29 +1,50 @@
-﻿using HeroicMud.Discord;
+﻿using System.Data;
+using HeroicMud.Discord;
 using HeroicMud.GameLogic;
-using HeroicMud.GameLogic.TickLogic;
+using HeroicMud.GameLogic.PlayerRepository;
 using Microsoft.Extensions.DependencyInjection;
 
-class Program
+internal class Program
 {
-	static async Task Main(string[] args)
+	private static async Task Main()
 	{
-		var services = new ServiceCollection();
+		CancellationTokenSource tokenSource = new();
+		Console.CancelKeyPress += (_, _) => tokenSource.Cancel();
 
-		services.AddGameLogic();
-		services.AddDiscordServices();
+		IPlayerRepository playerRepository;
+		try
+		{
+			IDbConnection dbConnection = ConnectToPostgres();
+			playerRepository = new PostgrePlayerRepository(dbConnection);
+		}
+		catch
+		{
+			playerRepository = new DummyPlayerRepository();
+			Console.WriteLine("Could not connect to Postgres.\nUSING DUMMY REPOSITORY!!!");
+		}
+		MudGame mudGame = new(playerRepository);
+		await mudGame.Start();
 
-		var provider = services.BuildServiceProvider();
+		ServiceProvider services = new ServiceCollection()
+			.AddSingleton(mudGame)
+			.BuildServiceProvider();
+		DiscordBot discordBot = await DiscordBot.Create(services);
+		await discordBot.Start();
 
-		provider.GetRequiredService<LoggingService>();
+		await Task.Delay(Timeout.Infinite, tokenSource.Token);
 
-		var bot = provider.GetRequiredService<DiscordBot>();
-		var tickManager = provider.GetRequiredService<TickManager>();
-		var game = provider.GetRequiredService<MudGame>();
+		await discordBot.Stop();
+		await mudGame.Stop();
+	}
 
-		_ = bot.StartAsync();
-		_ = game.LoadPlayersAsync();
-		_ = tickManager.StartAsync();
+	private static IDbConnection ConnectToPostgres()
+	{
+		string connectionString = Environment.GetEnvironmentVariable("MUD_DB_CONNECTION")
+			?? throw new InvalidOperationException("Environment variable MUD_DB_CONNECTION is unset.");
 
-		await Task.Delay(-1);
+		var connection = new Npgsql.NpgsqlConnection(connectionString);
+		connection.Open();
+
+		return connection;
 	}
 }

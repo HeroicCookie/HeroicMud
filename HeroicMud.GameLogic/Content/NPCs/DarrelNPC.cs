@@ -1,11 +1,11 @@
-﻿namespace HeroicMud.GameLogic.Data.NPCs
+﻿namespace HeroicMud.GameLogic.Content.NPCs
 {
 	public sealed class DarrelNPC : NPC
 	{
 		private static readonly DialogueNode _dialogue;
 		public override DialogueNode DialogueNode { get; } = _dialogue;
 
-		public DarrelNPC() : base("darrel", "Darrel") {}
+		public DarrelNPC() : base("darrel", "Darrel") { }
 
 		public override string GetDescription(Player player)
 		{

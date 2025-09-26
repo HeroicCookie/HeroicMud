@@ -1,6 +1,6 @@
-﻿using HeroicMud.GameLogic.Data.NPCs;
+﻿using HeroicMud.GameLogic.Content.NPCs;
 
-namespace HeroicMud.GameLogic.Data.Rooms;
+namespace HeroicMud.GameLogic.Content.Rooms;
 
 public abstract class Room(string id, Dictionary<string, string> exits)
 {
@@ -12,9 +12,9 @@ public abstract class Room(string id, Dictionary<string, string> exits)
     /// </summary>
     public readonly Dictionary<string, string> Exits = exits;
 
-    public readonly List<NPC> NPCs = new();
+    public readonly List<NPC> NPCs = [];
 
-	public virtual string RenderDescription(Player player) => "Room has no description.";
+    public virtual string RenderDescription(Player player) => "Room has no description.";
 
     /// <summary>
     /// Override to provide a custom list of exits based on player information.
@@ -23,10 +23,10 @@ public abstract class Room(string id, Dictionary<string, string> exits)
     /// <returns></returns>
     public virtual Dictionary<string, string> GetExits(Player player) => Exits;
 
-	/// <summary>
-	/// Override to provide a custom list of NPCs based on player information.
-	/// </summary>
-	/// <param name="player"></param>
-	/// <returns></returns>
-	public virtual List<NPC> GetNPCs(Player player) => NPCs;
+    /// <summary>
+    /// Override to provide a custom list of NPCs based on player information.
+    /// </summary>
+    /// <param name="player"></param>
+    /// <returns></returns>
+    public virtual List<NPC> GetNPCs(Player player) => NPCs;
 }

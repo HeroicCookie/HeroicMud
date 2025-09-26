@@ -1,6 +1,4 @@
-﻿using HeroicMud.GameLogic.Enums;
-
-namespace HeroicMud.GameLogic.PlayerRepository;
+﻿namespace HeroicMud.GameLogic.PlayerRepository;
 
 public abstract class IPlayerRepository
 {

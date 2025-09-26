@@ -1,44 +1,68 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
-using HeroicMud.GameLogic;
+
+using static Discord.GatewayIntents;
 
 namespace HeroicMud.Discord;
 
 public class DiscordBot
 {
-	private readonly MudGame _game;
-	private readonly DiscordSocketClient _client;
-	private readonly InteractionService _interactions;
 	private readonly IServiceProvider _services;
+	private readonly DiscordSocketClient _client;
+	private readonly InteractionService _interactionService;
 
-	public DiscordBot(MudGame game, DiscordSocketClient client, InteractionService interactions, IServiceProvider services)
+	internal DiscordBot(IServiceProvider services, DiscordSocketClient client, InteractionService interactionService)
 	{
-		_game = game;
-		_client = client;
-		_interactions = interactions;
 		_services = services;
+		_client = client;
+		_interactionService = interactionService;
+
+		_client.Log += LogAsync;
+		_interactionService.Log += LogAsync;
+
+		client.InteractionCreated += async i =>
+		{
+			var context = new SocketInteractionContext(_client, i);
+			await interactionService.ExecuteCommandAsync(context, _services);
+		};
 	}
 
-	public async Task StartAsync()
+	public static async Task<DiscordBot> Create(IServiceProvider services)
 	{
-		await _interactions.AddModulesAsync(typeof(DiscordBot).Assembly, _services);
+		DiscordSocketClient client = new(new() { GatewayIntents = Guilds | GuildMessages });
+		DiscordBot discordBot = new(services, client, new(client.Rest));
 
-		_client.InteractionCreated += async arg =>
-		{
-			var ctx = new SocketInteractionContext(_client, arg);
-			await _interactions.ExecuteCommandAsync(ctx, _services);
-		};
+		await discordBot._interactionService.AddModulesAsync(typeof(DiscordBot).Assembly, discordBot._services);
+		client.Ready += async () => await discordBot._interactionService.RegisterCommandsGloballyAsync();
 
-		_client.Ready += async () =>
-		{
-			await _interactions.RegisterCommandsGloballyAsync();
-		};
+		return discordBot;
+	}
 
-		var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") 
-			?? throw new InvalidOperationException("DISCORD_TOKEN env var not set");
+	public async Task Start()
+	{
+		var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+			?? throw new InvalidOperationException("Environment variable DISCORD_TOKEN is unset.");
 
 		await _client.LoginAsync(TokenType.Bot, token);
 		await _client.StartAsync();
+	}
+
+	public async Task Stop()
+	{
+		await _client.StopAsync();
+	}
+
+	private Task LogAsync(LogMessage message)
+	{
+		Console.WriteLine($"[{message.Source}/{message.Severity}] {message}");
+		if (message.Exception is CommandException e)
+		{
+			Console.WriteLine($"Command {e.Command.Name} failed in {e.Context.Channel}");
+			Console.WriteLine(e);
+		}
+
+		return Task.CompletedTask;
 	}
 }

@@ -1,6 +1,4 @@
-﻿using HeroicMud.GameLogic.Data.NPCs;
-
-namespace HeroicMud.GameLogic.Data.Rooms;
+﻿namespace HeroicMud.GameLogic.Content.Rooms;
 
 public class WindstopInnCellar : Room
 {
@@ -13,7 +11,7 @@ public class WindstopInnCellar : Room
     )
     { }
 
-	public override string RenderDescription(Player player)
+    public override string RenderDescription(Player player)
     {
         return """
 			The cellar of the Windstop Inn.
