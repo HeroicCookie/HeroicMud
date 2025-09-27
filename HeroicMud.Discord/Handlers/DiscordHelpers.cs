@@ -16,16 +16,22 @@ public static class DiscordHelpers
 		var categoryId = parentChannel.CategoryId;
 
 		var overwrites = new List<Overwrite>
-	{
-		new(guild.EveryoneRole.Id, PermissionTarget.Role,
-			new OverwritePermissions(viewChannel: PermValue.Deny)),
+		{
+			new(
+				guild.EveryoneRole.Id,
+				PermissionTarget.Role,
+				new OverwritePermissions(viewChannel: PermValue.Deny)),
 
-		new(context.User.Id, PermissionTarget.User,
-			new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+			new(
+				context.User.Id,
+				PermissionTarget.User,
+				new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
 
-		new(guild.CurrentUser.Id, PermissionTarget.User,
-			new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
-	};
+			new(
+				guild.CurrentUser.Id,
+				PermissionTarget.User,
+				new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
+		};
 
 		return await guild.CreateTextChannelAsync(name, props =>
 		{
@@ -37,21 +43,17 @@ public static class DiscordHelpers
 	public static async Task<Player?> GetVerifiedPlayerAsync(IInteractionContext context, MudGame game)
 	{
 		var player = game.GetPlayer(context.User.Id.ToString());
-
-		if (player == null)
+		if (player is null)
 		{
 			await context.Interaction.RespondAsync(
 				"You don’t have a character yet. Use `/create` first.",
 				ephemeral: true);
-			return null;
 		}
-
-		if (player.ChannelId != context.Channel.Id.ToString())
+		else if (player.ChannelId != context.Channel.Id.ToString())
 		{
 			await context.Interaction.RespondAsync(
 				"You can only use commands in your private channel.",
 				ephemeral: true);
-			return null;
 		}
 
 		return player;

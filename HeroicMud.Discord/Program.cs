@@ -28,7 +28,7 @@ internal class Program
 		ServiceProvider services = new ServiceCollection()
 			.AddSingleton(mudGame)
 			.BuildServiceProvider();
-		DiscordBot discordBot = await DiscordBot.Create(services);
+		DiscordBot discordBot = new(services);
 		await discordBot.Start();
 
 		await Task.Delay(Timeout.Infinite, tokenSource.Token);

@@ -13,39 +13,30 @@ public class DiscordBot
 	private readonly DiscordSocketClient _client;
 	private readonly InteractionService _interactionService;
 
-	internal DiscordBot(IServiceProvider services, DiscordSocketClient client, InteractionService interactionService)
+	public DiscordBot(IServiceProvider services)
 	{
 		_services = services;
-		_client = client;
-		_interactionService = interactionService;
+		_client = new(new() { GatewayIntents = Guilds | GuildMessages });
+		_interactionService = new(_client.Rest);
 
 		_client.Log += LogAsync;
 		_interactionService.Log += LogAsync;
 
-		client.InteractionCreated += async i =>
+		_client.Ready += async () => await _interactionService.RegisterCommandsGloballyAsync();
+		_client.InteractionCreated += async i =>
 		{
 			var context = new SocketInteractionContext(_client, i);
-			await interactionService.ExecuteCommandAsync(context, _services);
+			await _interactionService.ExecuteCommandAsync(context, services);
 		};
-	}
-
-	public static async Task<DiscordBot> Create(IServiceProvider services)
-	{
-		DiscordSocketClient client = new(new() { GatewayIntents = Guilds | GuildMessages });
-		DiscordBot discordBot = new(services, client, new(client.Rest));
-
-		await discordBot._interactionService.AddModulesAsync(typeof(DiscordBot).Assembly, discordBot._services);
-		client.Ready += async () => await discordBot._interactionService.RegisterCommandsGloballyAsync();
-
-		return discordBot;
 	}
 
 	public async Task Start()
 	{
-		var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-			?? throw new InvalidOperationException("Environment variable DISCORD_TOKEN is unset.");
+		await _interactionService.AddModulesAsync(typeof(DiscordBot).Assembly, _services);
 
-		await _client.LoginAsync(TokenType.Bot, token);
+		await _client.LoginAsync(TokenType.Bot, Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+			?? throw new InvalidOperationException("Environment variable DISCORD_TOKEN is unset."));
+
 		await _client.StartAsync();
 	}
 
