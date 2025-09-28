@@ -1,28 +1,41 @@
-﻿using HeroicMud.Game.Content.Rooms;
+﻿using System.Collections.Concurrent;
+using System.Threading.Channels;
+using HeroicMud.Game.Content.Rooms;
 using HeroicMud.Game.PlayerRepository;
-using HeroicMud.Game.Ticking;
 
 namespace HeroicMud.Game;
 
 public class World(IPlayerRepository playerRepository)
 {
-    public readonly IPlayerRepository PlayerRepository = playerRepository;
     public readonly RoomManager RoomManager = new();
 
-    private readonly Ticker ticker = new();
-    private List<Player> _players = [];
+    private readonly IPlayerRepository _playerRepository = playerRepository;
+    private readonly ConcurrentBag<Player> _players = [];
+
+    private readonly Channel<PlayerCommand> _commandChannel = Channel.CreateUnbounded<PlayerCommand>();
+    private Task? _processTask;
 
     public async Task Start()
     {
-        _players = await PlayerRepository.GetAllAsync();
-        foreach (var player in _players)
-            ticker.Register(player);
-        ticker.Start();
+        (await _playerRepository.GetAllAsync()).ForEach(p => _players.Add(p));
+        _processTask = Task.Run(async () =>
+        {
+            while (!_commandChannel.Reader.Completion.IsCompleted)
+                await (await _commandChannel.Reader.ReadAsync()).Do(this);
+        });
     }
 
     public async Task Stop()
     {
-        await ticker.Stop();
+        _commandChannel.Writer.Complete();
+        if (_processTask is not null)
+            await _processTask;
+    }
+
+    public async Task<string> SendPlayerCommand(PlayerCommand command)
+    {
+        await _commandChannel.Writer.WriteAsync(command);
+        return await command.Description;
     }
 
     public async Task<SaveResult> CreatePlayerAsync(string discordId, string channelId, string name, string description)
@@ -35,67 +48,12 @@ public class World(IPlayerRepository playerRepository)
             Description = description,
             CurrentRoomId = "windstop_inn_common_room"
         };
-
         _players.Add(player);
-        ticker.Register(player);
 
-        return await PlayerRepository.CreateAsync(player);
+        return await _playerRepository.CreateAsync(player);
     }
 
-    public async Task<SaveResult> SavePlayerAsync(Player player) => await PlayerRepository.UpdateAsync(player);
-
-    public string HandlePlayerCommand(string discordId, GameCommand command, params string[] args)
-    {
-        Player? player = _players.FirstOrDefault(p => p.DiscordId == discordId);
-        if (player is null)
-            return "You need to create a character first using /create.";
-
-        return command switch
-        {
-            GameCommand.Look => HandleLook(player),
-            GameCommand.Go => HandleGo(player, args.FirstOrDefault() ?? "").Result,
-            GameCommand.Say => HandleSay(player, string.Join(" ", args)),
-            _ => "Unknown command."
-        };
-    }
-
-    private string HandleLook(Player player)
-    {
-        Room? currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
-        if (currentRoom is null)
-            return "You are nowhere. This is a bug.";
-
-        return currentRoom.RenderDescription(player);
-    }
-
-    private async Task<string> HandleGo(Player player, string direction)
-    {
-        Room? currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
-        if (string.IsNullOrWhiteSpace(direction))
-            return "Go where?";
-
-        if (currentRoom is null)
-            return "You are nowhere. This is a bug.";
-
-        if (currentRoom.GetExits(player).TryGetValue(direction.ToLower(), out string? nextRoomId))
-        {
-            player.CurrentRoomId = nextRoomId;
-            _ = await SavePlayerAsync(player); // TODO: Add some user feedback if this fails
-            currentRoom = RoomManager.GetRoom(player.CurrentRoomId);
-
-            return currentRoom.RenderDescription(player);
-        }
-
-        return "You can't go that way.";
-    }
-
-    private string HandleSay(Player player, string message)
-    {
-        if (string.IsNullOrWhiteSpace(message))
-            return "Say what?";
-
-        return $"{player.Name} says: {message}";
-    }
+    public async Task<SaveResult> SavePlayerAsync(Player player) => await _playerRepository.UpdateAsync(player);
 
     public Player? GetPlayer(string discordId) => _players.FirstOrDefault(p => p.DiscordId == discordId);
 

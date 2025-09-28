@@ -8,8 +8,8 @@ internal class Program
 {
 	private static async Task Main()
 	{
-		CancellationTokenSource tokenSource = new();
-		Console.CancelKeyPress += (_, _) => tokenSource.Cancel();
+		CancellationTokenSource cancellation = new();
+		Console.CancelKeyPress += (_, _) => cancellation.Cancel();
 
 		IPlayerRepository playerRepository;
 		try
@@ -20,7 +20,8 @@ internal class Program
 		catch
 		{
 			playerRepository = new DummyPlayerRepository();
-			Console.WriteLine("Could not connect to Postgres.\nUSING DUMMY REPOSITORY!!!");
+			Console.WriteLine("Could not connect to Postgres.");
+			Console.WriteLine("USING DUMMY REPOSITORY!!!");
 		}
 		World world = new(playerRepository);
 		await world.Start();
@@ -31,7 +32,7 @@ internal class Program
 		Bot bot = new(services);
 		await bot.Start();
 
-		await Task.Delay(Timeout.Infinite, tokenSource.Token);
+		await Task.Delay(Timeout.Infinite, cancellation.Token);
 
 		await bot.Stop();
 		await world.Stop();

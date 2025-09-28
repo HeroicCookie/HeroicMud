@@ -18,8 +18,7 @@ public class InteractionHandler(Game.World world) : InteractionModuleBase<Socket
         if (player is null)
             return;
 
-        string output = world.HandlePlayerCommand(Context.User.Id.ToString(), GameCommand.Look);
-        await RespondAsync(output);
+        await RespondAsync(await world.SendPlayerCommand(new LookCommand(player)));
     }
 
     [SlashCommand("go", "Move in a direction.")]
@@ -32,8 +31,7 @@ public class InteractionHandler(Game.World world) : InteractionModuleBase<Socket
         if (player is null)
             return;
 
-        string output = world.HandlePlayerCommand(Context.User.Id.ToString(), GameCommand.Go, direction);
-        await RespondAsync(output);
+        await RespondAsync(await world.SendPlayerCommand(new GoCommand(player, direction)));
     }
 
     [SlashCommand("say", "Say something to others in the room.")]

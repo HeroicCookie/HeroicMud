@@ -21,7 +21,6 @@ public class Bot
 
 		_client.Log += LogAsync;
 		_interactionService.Log += LogAsync;
-
 		_client.Ready += async () => await _interactionService.RegisterCommandsGloballyAsync();
 		_client.InteractionCreated += async i =>
 		{
@@ -40,10 +39,7 @@ public class Bot
 		await _client.StartAsync();
 	}
 
-	public async Task Stop()
-	{
-		await _client.StopAsync();
-	}
+	public async Task Stop() => await _client.StopAsync();
 
 	private Task LogAsync(LogMessage message)
 	{
